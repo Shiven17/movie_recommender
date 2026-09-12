@@ -156,6 +156,10 @@ with st.sidebar:
         "No ratings or viewing history are used, so an unpopular film can still "
         "be a close match."
     )
+    st.caption(
+        "Film data from the TMDB 5000 dataset. Posters from TMDB. "
+        "This product uses the TMDB API but is not endorsed or certified by TMDB."
+    )
 
 # The dropdown searches as you type, so titles never have to be typed exactly
 order = movies.sort_values("popularity", ascending=False).index
