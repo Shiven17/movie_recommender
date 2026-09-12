@@ -6,11 +6,24 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 df = pd.read_csv("movie_dataset.csv")
 
-# Step 2: fill blanks, then join the four columns into one line of text per movie
+# Step 2: fill blanks in the four columns the recommender reads
 features = ["keywords", "cast", "genres", "director"]
 for col in features:
     df[col] = df[col].fillna("")
+
+# Step 5: squash each director's name into one word, so James Cameron becomes JamesCameron
+# and stops matching James Gunn just because they share a first name
+df["director"] = df["director"].str.replace(" ", "")
+
+# Step 5: same for the two genres made of two words, so sharing Science Fiction counts once, not twice
+df["genres"] = df["genres"].str.replace("Science Fiction", "ScienceFiction").str.replace("TV Movie", "TVMovie")
+
+# Step 2: join the four columns into one line of text per movie
 df["combined_features"] = df["keywords"] + " " + df["cast"] + " " + df["genres"] + " " + df["director"]
+
+# Step 5: movies described in fewer than 5 words are too thin to recommend
+MIN_WORDS = 5
+enough_info = (df["combined_features"].str.split().str.len() >= MIN_WORDS).tolist()
 
 # Step 3: turn each movie's text into word counts, then score every pair of movies
 cv = CountVectorizer()
@@ -67,9 +80,14 @@ def recommend(movie_index, n=10):
         print(f"The dataset has nothing about {label(movie_index)} to compare, so no recommendations.")
         return
 
-    # Best scores first, leaving out the movie itself and anything with no words in common
+    # Best scores first. Leave out the movie itself, anything with no words in common,
+    # and anything described too thinly to trust (step 5)
     scores = sorted(enumerate(cosine_sim[movie_index]), key=lambda pair: pair[1], reverse=True)
-    scores = [pair for pair in scores if pair[0] != movie_index and pair[1] > 0]
+    scores = [
+        (index, score)
+        for index, score in scores
+        if index != movie_index and score > 0 and enough_info[index]
+    ]
 
     print(f"\nBecause you liked {label(movie_index)}:")
     for index, score in scores[:n]:
